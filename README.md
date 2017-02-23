@@ -11,7 +11,8 @@ subscribed mqtt channel.
 
 The two topics that have been exposed for control are "setComponentText" and "sendCommand".
 eg: to set text for a txt control on the display just send the following payload
-  {
+ 
+ {
 "topic":"setComponentText",
 "payload":{
   "component":"page0.t2",
