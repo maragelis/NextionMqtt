@@ -1,7 +1,7 @@
 # NextionMqtt
 Control your Nextion display using a esp8266 and mqtt
 
-This sketch uses a esp8266 and mqtt to control a Nextion Display.
+This sketch uses a esp8266 and mqtt to control a Nextion Display which is conected to serial pins 13,14 of the ESP.
 
 The sketch publishers every event that is fired from the display to a mqtt channel
 which is defined under the root_topicOut
@@ -28,7 +28,7 @@ to Set a background picture send
  }
 }
 
-Dont forget to change MQTT_MAX_PACKET_SIZE 128 to 256 in file pubsubclient.h
+Dont forget to change MQTT_MAX_PACKET_SIZE 128 to 256 in file pubsubclient.h if you want to use Large texts in MQTT.
 
 You will also need this library https://github.com/bborncr/nextion (thanks for this bborncr)
 
