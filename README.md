@@ -1,4 +1,4 @@
-# NextionEsp8266Mqtt
+# NextionMqtt
 Control your Nextion display using a esp8266 and mqtt
 
 This sketch uses a esp8266 and mqtt to control a Nextion Display.
