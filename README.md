@@ -27,7 +27,9 @@ to Set a background picture send
  }
 }
 
-SOS: change MQTT_MAX_PACKET_SIZE 128 to 256
+Dont forget to change MQTT_MAX_PACKET_SIZE 128 to 256 in file pubsubclient.h
+
+You will also need this library https://github.com/bborncr/nextion (thanks for this bborncr)
 
 You can also use Node-red to set different texts and commands.
 example:  
