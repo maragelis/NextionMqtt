@@ -27,6 +27,8 @@ to Set a background picture send
  }
 }
 
+SOS: change MQTT_MAX_PACKET_SIZE 128 to 256
+
 You can also use Node-red to set different texts and commands.
 example:  
 
