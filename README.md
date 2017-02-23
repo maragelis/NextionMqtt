@@ -2,6 +2,9 @@
 Control your Nextion display using a esp8266 and mqtt
 
 This sketch uses a esp8266 and mqtt to control a Nextion Display which is conected to serial pins 13,15 of the ESP.
+ESP lolin Pinout (https://www.aerial.net/shop/imageslarge/IOT-AMICA_pinout.jpg)
+ESP Pins 13,15 can be used for serial2 communication .
+Ardiono UNO pins 2,3 will be used to connect to display.
 
 The sketch publishers every event that is fired from the display to a mqtt channel
 which is defined under the root_topicOut
