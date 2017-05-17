@@ -1,21 +1,40 @@
+#include <FS.h>   
+#include <WiFiManager.h>
 #include <ArduinoJson.h>
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include <Nextion.h>
 #include <SoftwareSerial.h>
+#include <DNSServer.h>            //Local DNS Server used for redirecting all requests to the configuration portal
+#include <ESP8266WebServer.h>  
+
+char mqtt_server[40];
+char mqtt_port[6] = "1883";
+bool InputSwitch1state=false;
+bool InputSwitch2state=false;
 
 
-const char* ssid = "SSID";
-const char* password = "*********";
-const char* mqtt_server = "192.168.2.231";
 const char* root_topicOut = "Nextion/Out";
 const char* root_topicIn = "Nextion/In";
+
+const int NextionRX = 13;
+const int NextionTX = 15;
+const int InputSwitch1 = 5;
+const int InputSwitch2 = 4;
+const int RelaySwitch1 = 14;
+const int RelaySwitch2 = 12;
+const int I2busSDA  = 16;
+const int I2cbusCLA = 2;
+const char* Switch1Nextion="LocalSw1";
+const char* Switch2Nextion="LocalSw2";
+
+
 
 WiFiClient espClient;
 PubSubClient client(espClient);
 
 
-SoftwareSerial nextion(13, 15);
+SoftwareSerial nextion(NextionRX, NextionTX);
 Nextion myNextion(nextion, 9600);
 
 struct JsonPayload{
@@ -23,16 +42,31 @@ struct JsonPayload{
   String Payload;
 } ;
 
+bool shouldSaveConfig = false;
+
+//callback notifying us of the need to save config
+void saveConfigCallback () {
+  Serial.println("Should save config");
+  shouldSaveConfig = true;
+}
+
+
+
 void setup() {
   // put your setup code here, to run once:
-Serial.begin(9600);
+Serial.begin(115200);
 Serial.println("Program Start");
 setup_wifi();
 
-  client.setServer(mqtt_server, 1883);
-  client.setCallback(callback);
-  reconnect();
-  myNextion.init();
+pinMode(InputSwitch1,INPUT);
+pinMode(InputSwitch2,INPUT);
+pinMode(RelaySwitch1,OUTPUT);
+pinMode(RelaySwitch2,OUTPUT);
+  
+myNextion.init();
+
+
+  
 }
 
 
@@ -56,6 +90,46 @@ String message = myNextion.listen(); //check for message
     }
 
 }
+
+
+void mountfs()
+{
+   if (SPIFFS.begin()) {
+    Serial.println("mounted file system");
+    if (SPIFFS.exists("/config.json")) {
+      //file exists, reading and loading
+      Serial.println("reading config file");
+      File configFile = SPIFFS.open("/config.json", "r");
+      if (configFile) {
+        Serial.println("opened config file");
+        size_t size = configFile.size();
+        // Allocate a buffer to store contents of the file.
+        std::unique_ptr<char[]> buf(new char[size]);
+
+        configFile.readBytes(buf.get(), size);
+        DynamicJsonBuffer jsonBuffer;
+        JsonObject& json = jsonBuffer.parseObject(buf.get());
+        json.printTo(Serial);
+        if (json.success()) {
+          Serial.println("\nparsed json");
+
+          strcpy(mqtt_server, json["mqtt_server"]);
+          strcpy(mqtt_port, json["mqtt_port"]);
+          
+        } else {
+          Serial.println("failed to load json config");
+        }
+      }
+    }
+  } else {
+    Serial.println("failed to mount FS");
+  }
+}
+
+
+
+
+
 
 void callback(char* topic, byte* payload, unsigned int length) {
   Serial.print("Message arrived [");
@@ -139,21 +213,7 @@ void SendMessage(char* Message)
 }
 
 
-void DoHisterisi(String Component)
-{
-   if(Component=="65230")
-    {
-      myNextion.setComponentText("Histerisi.t0","2,2");
-      
-    }else
-    {
-      myNextion.setComponentText("Histerisi.t0","1,1");
-      
-    }
-   
-   
-   //Component=65220)
-}
+
 
 String GetComponent(String NextionMessage)
 {
@@ -168,18 +228,59 @@ String GetComponent(String NextionMessage)
 
 void setup_wifi(){
 
-  delay(10);
-  // We start by connecting to a WiFi network
-  Serial.println();
-  Serial.print("Connecting to ");
-  Serial.println(ssid);
-  WiFi.mode(WIFI_AP);
-  WiFi.begin(ssid, password);
 
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
+  WiFiManagerParameter custom_mqtt_server("server", "mqtt server", mqtt_server, 40);
+
+  WiFiManager wifiManager;
+  wifiManager.setSaveConfigCallback(saveConfigCallback);
+  wifiManager.setConfigPortalTimeout(180);
+  
+  wifiManager.addParameter(&custom_mqtt_server);
+  
+  wifiManager.autoConnect("NextionAP");
+
+
+strcpy(mqtt_server, custom_mqtt_server.getValue());
+  
+
+
+  //if you get here you have connected to the WiFi
+  Serial.println("connected...yeey :)");
+
+  //read updated parameters
+  strcpy(mqtt_server, custom_mqtt_server.getValue());
+  
+  //save the custom parameters to FS
+  if (shouldSaveConfig) {
+    Serial.println("saving config");
+    DynamicJsonBuffer jsonBuffer;
+    JsonObject& json = jsonBuffer.createObject();
+    json["mqtt_server"] = mqtt_server;
+    
+    File configFile = SPIFFS.open("/config.json", "w");
+    if (!configFile) {
+      Serial.println("failed to open config file for writing");
+    }
+
+    json.printTo(Serial);
+    json.printTo(configFile);
+    configFile.close();
+    //end save
   }
+
+  Serial.println("local ip");
+  Serial.println(WiFi.localIP());
+
+  
+  Serial.println(custom_mqtt_server.getValue());
+  
+  client.setServer( mqtt_server, 1883);
+  
+  client.setCallback(callback);
+  reconnect();
+
+  
+  
   Serial.println("");
   Serial.println("WiFi connected");
   Serial.println("IP address: ");
@@ -207,5 +308,4 @@ void setup_wifi(){
     }
   }
 }
-
 
